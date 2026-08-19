@@ -16,6 +16,7 @@ final class ProviderRegistryTests: XCTestCase {
                 "cursor",
                 "droid",
                 "gemini",
+                "glm",
                 "kimi",
                 "kiro",
                 "minimax",

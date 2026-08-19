@@ -198,6 +198,53 @@ extension ProviderAccountEditorView {
         }
     }
 
+    // MARK: - GLM Coding Plan API Key Entry
+
+    var glmKeyEntrySection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(L("GLM Coding Plan API Key", "GLM Coding Plan API Key"))
+                .font(.subheadline.weight(.semibold))
+
+            apiRegionPicker(selection: $glmAPIRegion)
+
+            SecureField("…", text: $glmAPIKey)
+                .textFieldStyle(.roundedBorder)
+                .disabled(isWorking)
+                .onSubmit { connectGLMAPIKey() }
+
+            Text(L(
+                "Use a Coding Plan key from the matching Zhipu / Z.AI console. Pay-as-you-go keys and cross-region keys will not work here. The key is stored in Keychain.",
+                "请使用对应区域智谱 / Z.AI 控制台里的 Coding Plan Key。按量付费 Key 以及跨区 Key 在这里不可用。Key 会存入钥匙串。"
+            ))
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+
+            HStack(spacing: 10) {
+                Button {
+                    connectGLMAPIKey()
+                } label: {
+                    Label(L("Connect", "连接"), systemImage: "link")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .disabled(isWorking || glmAPIKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+                Button {
+                    if let url = URL(string: glmConsoleURL(for: glmAPIRegion)) {
+                        NSWorkspace.shared.open(url)
+                    }
+                } label: {
+                    Label(L("Get API Key", "获取 API Key"), systemImage: "safari")
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+                .disabled(isWorking)
+            }
+        }
+    }
+
     // MARK: - API Region
 
     private func apiRegionPicker(selection: Binding<ProviderAPIRegion>) -> some View {
@@ -246,6 +293,15 @@ extension ProviderAccountEditorView {
             return "https://platform.moonshot.ai/"
         case .china, .auto:
             return "https://www.kimi.com/code/console"
+        }
+    }
+
+    private func glmConsoleURL(for region: ProviderAPIRegion) -> String {
+        switch region {
+        case .international:
+            return "https://z.ai/manage-apikey"
+        case .china, .auto:
+            return "https://open.bigmodel.cn/usercenter/apikeys"
         }
     }
 

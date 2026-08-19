@@ -413,6 +413,35 @@ extension ProviderAccountEditorView {
         }
     }
 
+    func connectGLMAPIKey() {
+        let key = glmAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !key.isEmpty else {
+            errorMessage = L("Enter your GLM Coding Plan API key first.", "请先填写 GLM Coding Plan API Key。")
+            return
+        }
+        let region = glmAPIRegion
+        sessionMonitorTask?.cancel()
+        Task {
+            await withWorkingState {
+                let (credential, usage) = try await ProviderAuthManager.authenticateManualCredential(
+                    providerId: "glm",
+                    authMethod: .apiKey,
+                    value: key,
+                    suggestedLabel: nil,
+                    apiRegion: region
+                )
+                try await MainActor.run {
+                    try appState.registerAuthenticatedCredential(credential, usage: usage, note: nil)
+                    statusMessage = L("Account connected.", "账号已连接。")
+                    glmAPIKey = ""
+                    refreshCandidates()
+                }
+                _ = await refreshCoordinator.fetchSingleProvider("glm")
+                await MainActor.run { dismiss() }
+            }
+        }
+    }
+
     func connectDroidAPIKey() {
         let key = droidAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !key.isEmpty else {

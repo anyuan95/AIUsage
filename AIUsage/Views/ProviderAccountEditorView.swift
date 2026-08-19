@@ -19,8 +19,10 @@ struct ProviderAccountEditorView: View {
     @State var kimiAPIKey: String = ""
     @State var droidAPIKey: String = ""
     @State var miniMaxAPIKey: String = ""
+    @State var glmAPIKey: String = ""
     @State var kimiAPIRegion: ProviderAPIRegion = .auto
     @State var miniMaxAPIRegion: ProviderAPIRegion = .auto
+    @State var glmAPIRegion: ProviderAPIRegion = .auto
     @State var showWebLogin = false
     @State var showCodexBrowser = false
     @State var candidates: [ProviderAuthCandidate] = []
@@ -86,6 +88,9 @@ struct ProviderAccountEditorView: View {
         if providerId == "minimax" {
             return min(660, 460 + detectedSessionExtra)
         }
+        if providerId == "glm" {
+            return min(660, 460 + detectedSessionExtra)
+        }
         let batchImportExtra: CGFloat = supportsBatchImport ? 44 : 0
         let baseHeight: CGFloat = (visibleCandidateCount == 0 ? 300 : 360) + batchImportExtra
         return min(600, baseHeight + detectedSessionExtra)
@@ -125,6 +130,10 @@ struct ProviderAccountEditorView: View {
 
                 if providerId == "minimax" {
                     miniMaxKeyEntrySection
+                }
+
+                if providerId == "glm" {
+                    glmKeyEntrySection
                 }
 
                 if !candidates.isEmpty {
