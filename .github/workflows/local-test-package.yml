@@ -2,6 +2,9 @@ name: Local Test Package
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - feature/guard-cli-config-writes
 
 permissions:
   contents: read
