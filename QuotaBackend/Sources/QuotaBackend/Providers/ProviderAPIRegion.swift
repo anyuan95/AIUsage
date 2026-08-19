@@ -1,6 +1,6 @@
 import Foundation
 
-/// MiniMax / Kimi 等海内外分站 API 的区域偏好。
+/// MiniMax / Kimi / GLM 等海内外分站 API 的区域偏好。
 /// 存入 `AccountCredential.metadata["apiRegion"]`；缺省为 `.auto`。
 public enum ProviderAPIRegion: String, Codable, CaseIterable, Sendable {
     case auto
