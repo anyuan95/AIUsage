@@ -10,6 +10,7 @@ private let localSettingsLog = Logger(subsystem: "com.aiusage.desktop", category
 
 struct LocalSettingsEditorView: View {
     @Environment(\.dismiss) private var dismiss
+    @ObservedObject private var settings = AppSettings.shared
 
     /// 要编辑的 JSON 文件绝对路径。
     var filePath: String = LocalSettingsEditorView.claudeSettingsPath
@@ -101,6 +102,13 @@ struct LocalSettingsEditorView: View {
 
             Spacer()
 
+            if !settings.allowCLIConfigWrites {
+                Text(CLIConfigWriteError.disabled.localizedDescription)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+
             Button {
                 saveFile()
             } label: {
@@ -116,8 +124,8 @@ struct LocalSettingsEditorView: View {
                 .background(Capsule().fill(Color.accentColor))
             }
             .buttonStyle(.plain)
-            .disabled(!hasUnsavedChanges || jsonError != nil)
-            .opacity(hasUnsavedChanges && jsonError == nil ? 1 : 0.5)
+            .disabled(!hasUnsavedChanges || jsonError != nil || !settings.allowCLIConfigWrites)
+            .opacity(hasUnsavedChanges && jsonError == nil && settings.allowCLIConfigWrites ? 1 : 0.5)
             .keyboardShortcut("s", modifiers: .command)
         }
         .padding(.horizontal, 16)
@@ -183,6 +191,7 @@ struct LocalSettingsEditorView: View {
     }
 
     private func persist(_ data: Data) throws {
+        try CLIConfigWriteGuard.requireAllowed()
         let path = filePath
         let dir = (path as NSString).deletingLastPathComponent
         try FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)

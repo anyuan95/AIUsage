@@ -5,7 +5,20 @@ import Foundation
 // test is exactly the one shipped by AIUsage.
 final class AppSettings {
     static let shared = AppSettings()
+    var allowCLIConfigWrites = true
     func t(_ en: String, _ zh: String) -> String { en }
+}
+
+enum CLIConfigWriteError: Error {
+    case disabled
+}
+
+enum CLIConfigWriteGuard {
+    static var isAllowed: Bool { AppSettings.shared.allowCLIConfigWrites }
+
+    static func requireAllowed() throws {
+        guard isAllowed else { throw CLIConfigWriteError.disabled }
+    }
 }
 
 struct RegressionMappedModel { let name: String }
@@ -41,7 +54,90 @@ enum ClaudeDesktopProfileTransactionRegression {
         try sharedPreferenceMutationScenario(root: root.appendingPathComponent("preferences"), fileManager: fileManager)
         try staleSelfConflictScenario(root: root.appendingPathComponent("stale-self-conflict"), fileManager: fileManager)
         try externalEditScenario(root: root.appendingPathComponent("external-edit"), fileManager: fileManager)
+        try blockedCLIConfigWritesScenario(root: root.appendingPathComponent("blocked-writes"), fileManager: fileManager)
         print("Claude Desktop profile transaction regression passed")
+    }
+
+    private static func blockedCLIConfigWritesScenario(root: URL, fileManager: FileManager) throws {
+        let paths = ClaudeDesktopProfileStore.Paths(home: root)
+        let store = ClaudeDesktopProfileStore(fileManager: fileManager, paths: paths)
+        let catalog = [
+            ClaudeDesktopCatalogEntry(
+                id: "claude-opus-aiusage-v1-model-large-a1",
+                upstreamModel: "provider/model-large",
+                displayName: "Model Large",
+                supports1M: false
+            )
+        ]
+
+        AppSettings.shared.allowCLIConfigWrites = false
+        do {
+            try store.connect(
+                baseURL: "https://localhost:14403/claude-desktop",
+                clientKey: "desktop-key-blocked",
+                catalog: catalog
+            )
+            throw RegressionFailure.assertion("connect succeeded while CLI config writes were disabled")
+        } catch is CLIConfigWriteError {
+            // expected
+        }
+        try require(
+            !fileManager.fileExists(atPath: paths.journal.path),
+            "journal was written while CLI config writes were disabled"
+        )
+        try require(
+            !fileManager.fileExists(atPath: paths.profile.path),
+            "Desktop profile was written while CLI config writes were disabled"
+        )
+
+        AppSettings.shared.allowCLIConfigWrites = true
+        try write(Data("{}\n".utf8), to: paths.normalConfig, fileManager: fileManager, permissions: 0o600)
+        try write(Data("{}\n".utf8), to: paths.threePConfig, fileManager: fileManager, permissions: 0o600)
+        try write(Data("{\"entries\":[]}\n".utf8), to: paths.meta, fileManager: fileManager, permissions: 0o600)
+        try store.connect(
+            baseURL: "https://localhost:14403/claude-desktop",
+            clientKey: "desktop-key-connected",
+            catalog: catalog
+        )
+        let profileBefore = try Data(contentsOf: paths.profile)
+        let journalBefore = try Data(contentsOf: paths.journal)
+
+        AppSettings.shared.allowCLIConfigWrites = false
+        defer { AppSettings.shared.allowCLIConfigWrites = true }
+
+        do {
+            try store.refresh(
+                baseURL: "https://localhost:14403/claude-desktop",
+                clientKey: "desktop-key-refreshed",
+                catalog: catalog
+            )
+            throw RegressionFailure.assertion("refresh succeeded while CLI config writes were disabled")
+        } catch is CLIConfigWriteError {
+            // expected
+        }
+        try require(try Data(contentsOf: paths.profile) == profileBefore, "refresh wrote the Desktop profile while disabled")
+        try require(try Data(contentsOf: paths.journal) == journalBefore, "refresh wrote the journal while disabled")
+
+        do {
+            _ = try store.disconnect()
+            throw RegressionFailure.assertion("disconnect succeeded while CLI config writes were disabled")
+        } catch is CLIConfigWriteError {
+            // expected
+        }
+        try require(try Data(contentsOf: paths.profile) == profileBefore, "disconnect wrote the Desktop profile while disabled")
+
+        var journal = try jsonObject(at: paths.journal)
+        journal["phase"] = "applying"
+        try write(
+            try JSONSerialization.data(withJSONObject: journal, options: [.sortedKeys]),
+            to: paths.journal,
+            fileManager: fileManager,
+            permissions: 0o600
+        )
+        try store.recoverInterruptedApplyIfNeeded()
+        let recovered = try jsonObject(at: paths.journal)
+        try require(recovered["phase"] as? String == "applying", "recover mutated the journal while CLI config writes were disabled")
+        try require(try Data(contentsOf: paths.profile) == profileBefore, "recover wrote the Desktop profile while disabled")
     }
 
     private static func exactRestoreScenario(root: URL, fileManager: FileManager) throws {

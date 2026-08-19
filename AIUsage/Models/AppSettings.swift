@@ -130,6 +130,7 @@ enum DefaultsKey {
     static let menuBarCostSourceConfigs = "menuBarCostSourceConfigs"
     static let proxyActivatedConfigId = "proxyActivatedConfigId"
     static let proxyActivatedCodexConfigId = "proxyActivatedCodexConfigId"
+    static let allowCLIConfigWrites = "allowCLIConfigWrites"
     static let proxyAutoRestoreOnLaunch = "proxyAutoRestoreOnLaunch"
     static let proxyOnlyRunningIds = "proxyOnlyRunningIds"
     static let proxyConnectivityResults = "proxyConnectivityResults"
@@ -256,6 +257,13 @@ final class AppSettings: ObservableObject {
 
     @Published var proxyAutoRestoreOnLaunch: Bool = UserDefaults.standard.bool(forKey: DefaultsKey.proxyAutoRestoreOnLaunch)
 
+    /// 是否允许改写本机 Claude / Codex / OpenCode 等 CLI 配置。
+    /// 缺 key（初次安装）视为 false。用 `object(forKey:) as? Bool`，不要用 `bool(forKey:)`：
+    /// 后者把「从未设置」和「显式关闭」都读成 false，以后若改默认值会分不清。
+    @Published var allowCLIConfigWrites: Bool = {
+        UserDefaults.standard.object(forKey: DefaultsKey.allowCLIConfigWrites) as? Bool ?? false
+    }()
+
     /// 侧边栏中被用户隐藏的导航分区（存 `AppSection.rawValue`）。常驻分区即使被写入也不会真正隐藏。
     @Published var hiddenSidebarSections: Set<String> = {
         let defaults = UserDefaults.standard
@@ -358,6 +366,7 @@ final class AppSettings: ObservableObject {
             self.onRemoteSettingsChanged?("http://\(self.remoteHost):\(port)")
         }.store(in: &cancellables)
         $proxyAutoRestoreOnLaunch.dropFirst().sink { defaults.set($0, forKey: DefaultsKey.proxyAutoRestoreOnLaunch) }.store(in: &cancellables)
+        $allowCLIConfigWrites.dropFirst().sink { defaults.set($0, forKey: DefaultsKey.allowCLIConfigWrites) }.store(in: &cancellables)
         $hiddenSidebarSections.dropFirst().sink { defaults.set(Array($0), forKey: DefaultsKey.hiddenSidebarSections) }.store(in: &cancellables)
         $sidebarProxiesGroupExpanded.dropFirst().sink { defaults.set($0, forKey: DefaultsKey.sidebarProxiesGroupExpanded) }.store(in: &cancellables)
     }
@@ -397,6 +406,25 @@ final class AppSettings: ObservableObject {
 
     static func localized(_ en: String, _ zh: String) -> String {
         AppSettings.shared.language == "zh" ? zh : en
+    }
+}
+
+enum CLIConfigWriteError: LocalizedError {
+    case disabled
+
+    var errorDescription: String? {
+        AppSettings.shared.t(
+            "AIUsage is not allowed to change local CLI configs. Enable \"Allow modifying Claude / Codex / OpenCode config files\" in Settings → Proxy.",
+            "当前不允许改写本地 CLI 配置。请到设置 → 代理开启「允许修改 Claude / Codex / OpenCode 配置文件」。"
+        )
+    }
+}
+
+enum CLIConfigWriteGuard {
+    static var isAllowed: Bool { AppSettings.shared.allowCLIConfigWrites }
+
+    static func requireAllowed() throws {
+        guard isAllowed else { throw CLIConfigWriteError.disabled }
     }
 }
 

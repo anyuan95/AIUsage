@@ -302,7 +302,7 @@ final class OpenCodeNodeStore: ObservableObject {
         // 与 Claude/Codex 一致：受「启动时自动恢复代理」设置控制。关闭时不接管，
         // 并还原 opencode.json（避免它仍指向不会被拉起的本地端口）。
         guard AppSettings.shared.proxyAutoRestoreOnLaunch else {
-            if activeNodeId != nil {
+            if activeNodeId != nil, CLIConfigWriteGuard.isAllowed {
                 do { try deactivate() } catch {
                     openCodeStoreLog.error("Failed to deactivate OpenCode node while auto-restore disabled: \(SensitiveDataRedactor.redactedMessage(for: error), privacy: .public)")
                 }

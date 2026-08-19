@@ -98,6 +98,7 @@ final class ProviderActivationManager: ObservableObject {
     }
 
     func activateAccount(entry: ProviderAccountEntry) throws {
+        try CLIConfigWriteGuard.requireAllowed()
         switch entry.providerId {
         case "codex":
             try activateCodexAccount(entry: entry)

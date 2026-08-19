@@ -11,6 +11,7 @@ private let codexConfigEditorLog = Logger(subsystem: "com.aiusage.desktop", cate
 
 struct CodexConfigEditorView: View {
     @Environment(\.dismiss) private var dismiss
+    @ObservedObject private var settings = AppSettings.shared
     @State private var text = ""
     @State private var hasUnsavedChanges = false
     @State private var showSaveSuccess = false
@@ -152,6 +153,13 @@ struct CodexConfigEditorView: View {
 
             Spacer()
 
+            if !settings.allowCLIConfigWrites {
+                Text(CLIConfigWriteError.disabled.localizedDescription)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+
             Button {
                 saveFile()
             } label: {
@@ -167,8 +175,8 @@ struct CodexConfigEditorView: View {
                 .background(Capsule().fill(Color.accentColor))
             }
             .buttonStyle(.plain)
-            .disabled(!hasUnsavedChanges)
-            .opacity(hasUnsavedChanges ? 1 : 0.5)
+            .disabled(!hasUnsavedChanges || !settings.allowCLIConfigWrites)
+            .opacity(hasUnsavedChanges && settings.allowCLIConfigWrites ? 1 : 0.5)
             .keyboardShortcut("s", modifiers: .command)
         }
         .padding(.horizontal, 16)
@@ -200,6 +208,7 @@ struct CodexConfigEditorView: View {
         let path = Self.configPath
         let dir = (path as NSString).deletingLastPathComponent
         do {
+            try CLIConfigWriteGuard.requireAllowed()
             try FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
             try data.write(to: URL(fileURLWithPath: path), options: .atomic)
             // config.toml 可能含 token，恢复 0600 权限（与 CodexConfigManager 一致）。

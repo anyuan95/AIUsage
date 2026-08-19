@@ -89,6 +89,7 @@ final class CodexConfigManager {
         globalTOML: String? = nil,
         nodeTOML: String? = nil
     ) throws {
+        try CLIConfigWriteGuard.requireAllowed()
         // 备份即真相源：若已有备份，原文以备份为准（保证重复激活幂等，不会把脏文件当原文）。
         let pristine: String?
         if hasBackup {
@@ -143,6 +144,7 @@ final class CodexConfigManager {
 
     /// 还原 config.toml：有备份则整文覆盖回原文并删除备份；无备份则剥离受管理块（必要时删文件）。
     func restore() throws {
+        try CLIConfigWriteGuard.requireAllowed()
         if hasBackup {
             do {
                 let data = try Data(contentsOf: URL(fileURLWithPath: backupPath))

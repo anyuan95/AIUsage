@@ -120,6 +120,7 @@ final class OpenCodeConfigManager {
     /// - Parameter commonSettings: 通用配置片段（按节点合并策略由调用方决定传入与否）。
     ///   合并顺序：用户原文 ← 通用配置 ← 受管块（受管键始终最终生效）。
     func activate(node: OpenCodeNode, baseURLOverride: String? = nil, commonSettings: [String: Any]? = nil) throws {
+        try CLIConfigWriteGuard.requireAllowed()
         guard let defaultModel = node.effectiveDefaultModel, node.isComplete else {
             throw OpenCodeConfigError.nodeIncomplete
         }
@@ -149,6 +150,7 @@ final class OpenCodeConfigManager {
     /// - clientKey: 固定 client key（写入受管块 apiKey；代理据此鉴权）。
     /// - virtualModel: 固定虚拟模型名（CLI 永远发它，由代理改写为激活节点真实模型）。
     func activateGlobal(interface: OpenCodeProtocol, baseURL: String, clientKey: String, virtualModel: String) throws {
+        try CLIConfigWriteGuard.requireAllowed()
         let model = virtualModel.nilIfBlank ?? "model"
 
         // 备份即真相源（与 per-node activate 同语义，幂等）。
@@ -346,6 +348,7 @@ final class OpenCodeConfigManager {
 
     /// 还原 opencode.json：有备份则整文覆盖回原文并删除备份；无备份则剥离受管块（必要时删文件）。
     func restore() throws {
+        try CLIConfigWriteGuard.requireAllowed()
         if hasBackup {
             do {
                 let data = try Data(contentsOf: URL(fileURLWithPath: backupPath))
