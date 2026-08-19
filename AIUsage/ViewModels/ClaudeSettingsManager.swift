@@ -111,6 +111,7 @@ class ClaudeSettingsManager {
 
     /// Legacy partial write: only updates managed env keys + model (kept for backward compat).
     func writeEnv(_ config: EnvConfig) throws {
+        try CLIConfigWriteGuard.requireAllowed()
         var settings = try readSettings()
         var env = settings["env"] as? [String: Any] ?? [:]
 
@@ -168,6 +169,7 @@ class ClaudeSettingsManager {
     }
 
     func writePersistentEffort(_ level: ClaudeCodePersistentEffort) throws {
+        try CLIConfigWriteGuard.requireAllowed()
         var settings = try readSettings()
         if level == .auto {
             settings.removeValue(forKey: "effortLevel")
@@ -179,12 +181,14 @@ class ClaudeSettingsManager {
 
     /// Full replacement write: backs up current file, then writes the entire settings dict.
     func writeFullSettings(_ settings: [String: Any]) throws {
+        try CLIConfigWriteGuard.requireAllowed()
         backupCurrentSettings()
         try writeSettings(settings)
         claudeSettingsLog.info("Full settings.json replacement written successfully")
     }
 
     func clearEnv() throws {
+        try CLIConfigWriteGuard.requireAllowed()
         var settings = try readSettings()
         var env = settings["env"] as? [String: Any] ?? [:]
         for key in managedEnvKeys {
@@ -197,6 +201,7 @@ class ClaudeSettingsManager {
 
     /// Restore settings.json from the backup created before the last full write.
     func restoreFromBackup() throws {
+        try CLIConfigWriteGuard.requireAllowed()
         guard let data = FileManager.default.contents(atPath: backupPath) else {
             claudeSettingsLog.info("No backup file to restore from, clearing managed keys instead")
             try clearEnv()
@@ -226,6 +231,7 @@ class ClaudeSettingsManager {
     }
 
     private func writeSettings(_ settings: [String: Any]) throws {
+        try CLIConfigWriteGuard.requireAllowed()
         let data: Data
         do {
             data = try JSONSerialization.data(

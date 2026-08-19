@@ -317,6 +317,9 @@ final class ClaudeDesktopProfileStore {
     /// Recover only an interrupted apply.  An active journal is the exact
     /// snapshot needed for a future user-requested disconnect and must stay.
     func recoverInterruptedApplyIfNeeded() throws {
+        // Launch recovery is unconditional. If writes are off, leave files as-is
+        // instead of failing startup.
+        guard CLIConfigWriteGuard.isAllowed else { return }
         try withLock {
             guard var journal = try loadJournal() else { return }
             guard journal.phase == .applying else { return }
@@ -331,6 +334,7 @@ final class ClaudeDesktopProfileStore {
         clientKey: String,
         catalog: [ClaudeDesktopCatalogEntry]
     ) throws {
+        try CLIConfigWriteGuard.requireAllowed()
         try withLock {
             var takeoverSnapshots: [FileSnapshot]?
             if let journal = try loadJournal() {
@@ -397,6 +401,7 @@ final class ClaudeDesktopProfileStore {
         clientKey: String,
         catalog: [ClaudeDesktopCatalogEntry]
     ) throws {
+        try CLIConfigWriteGuard.requireAllowed()
         try withLock {
             guard let journal = try loadJournal(), journal.phase == .active else {
                 throw ClaudeDesktopProfileError.noRestoreJournal
@@ -413,7 +418,8 @@ final class ClaudeDesktopProfileStore {
     /// active, fail closed and leave that selection untouched.
     @discardableResult
     func disconnect() throws -> Bool {
-        try withLock {
+        try CLIConfigWriteGuard.requireAllowed()
+        return try withLock {
             guard let journal = try loadJournal() else {
                 throw ClaudeDesktopProfileError.noRestoreJournal
             }

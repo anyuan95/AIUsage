@@ -76,14 +76,15 @@ extension ProxyViewModel {
             saveActivatedCodexId()
             // 清理任何残留的受管理 config.toml（仅当确实由我们注入时才会动作）。
             if runtimeService.isCodexConfigManaged() {
-                do {
-                    try runtimeService.clearCodexRuntime()
-                } catch {
-                    proxyRuntimeLog.error("Failed to clear Codex runtime while restoring empty activation state: \(String(describing: error), privacy: .public)")
-                }
+                clearCodexRuntimeIfAllowed(reason: "restoring empty activation state")
             }
             return
         }
+
+        // Same as Claude / global-proxy launch restore: do not treat "writes
+        // disabled" as a restore failure, or the persisted Codex id is wiped
+        // and later enabling the switch cannot auto-restore.
+        guard CLIConfigWriteGuard.isAllowed else { return }
 
         proxyRuntimeLog.info("Restoring Codex node \(config.name, privacy: .public)")
         do {
@@ -93,11 +94,7 @@ extension ProxyViewModel {
             proxyRuntimeLog.error("Failed to restore Codex node \(config.name, privacy: .public): \(String(describing: error), privacy: .public)")
             activatedCodexConfigId = nil
             saveActivatedCodexId()
-            do {
-                try runtimeService.clearCodexRuntime()
-            } catch {
-                proxyRuntimeLog.error("Failed to clear Codex runtime after restore failure: \(String(describing: error), privacy: .public)")
-            }
+            clearCodexRuntimeIfAllowed(reason: "after restore failure")
         }
     }
 
@@ -124,11 +121,7 @@ extension ProxyViewModel {
         }
 
         guard let id = activatedConfigId else {
-            do {
-                try runtimeService.clearRuntime()
-            } catch {
-                proxyRuntimeLog.error("Failed to clear proxy runtime while restoring empty activation state: \(String(describing: error), privacy: .public)")
-            }
+            clearClaudeRuntimeIfAllowed(reason: "restoring empty activation state")
             return
         }
 
@@ -141,15 +134,12 @@ extension ProxyViewModel {
             activatedConfigId = nil
             if migrated { saveConfigurations() }
             saveActivatedId()
-            do {
-                try runtimeService.clearRuntime()
-            } catch {
-                proxyRuntimeLog.error("Failed to clear proxy runtime for missing restored node: \(String(describing: error), privacy: .public)")
-            }
+            clearClaudeRuntimeIfAllowed(reason: "missing restored node")
             return
         }
 
         proxyRuntimeLog.info("Migrating legacy Code route for \(config.name, privacy: .public) to the Code Gateway")
+        guard CLIConfigWriteGuard.isAllowed else { return }
         do {
             try runtimeService.clearRuntime()
             try persistActivationSelection(nil, touchLastUsedAt: false, isCodex: false)
@@ -161,16 +151,30 @@ extension ProxyViewModel {
             }
             saveConfigurations()
             saveActivatedId()
-            do {
-                try runtimeService.clearRuntime()
-            } catch {
-                proxyRuntimeLog.error("Failed to clear proxy runtime after restore failure: \(String(describing: error), privacy: .public)")
-            }
+            clearClaudeRuntimeIfAllowed(reason: "after restore failure")
             return
         }
         await GlobalProxyManager.claude.enable(activeNodeId: config.id)
         if !GlobalProxyManager.claude.isEnabled {
             proxyRuntimeLog.error("Failed to migrate the legacy Code route for \(config.name, privacy: .public) to the Code Gateway")
+        }
+    }
+
+    private func clearClaudeRuntimeIfAllowed(reason: String) {
+        guard CLIConfigWriteGuard.isAllowed else { return }
+        do {
+            try runtimeService.clearRuntime()
+        } catch {
+            proxyRuntimeLog.error("Failed to clear proxy runtime (\(reason, privacy: .public)): \(String(describing: error), privacy: .public)")
+        }
+    }
+
+    private func clearCodexRuntimeIfAllowed(reason: String) {
+        guard CLIConfigWriteGuard.isAllowed else { return }
+        do {
+            try runtimeService.clearCodexRuntime()
+        } catch {
+            proxyRuntimeLog.error("Failed to clear Codex runtime (\(reason, privacy: .public)): \(String(describing: error), privacy: .public)")
         }
     }
 

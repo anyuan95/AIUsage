@@ -441,6 +441,11 @@ final class GlobalProxyManager: ObservableObject {
         operationError = nil
         defer { isBusy = false }
 
+        guard CLIConfigWriteGuard.isAllowed else {
+            operationError = CLIConfigWriteError.disabled.localizedDescription
+            return
+        }
+
         guard let node = node(for: nodeId),
               let env = runtimeEnvironment(nodeId: nodeId) else {
             operationError = AppSettings.shared.t("Selected node not found.", "未找到所选节点。")
@@ -657,12 +662,14 @@ final class GlobalProxyManager: ObservableObject {
         defer { isBusy = false }
 
         let previousConfig = config
-        do {
-            try adapter.restoreCLIConfig()
-        } catch {
-            globalProxyManagerLog.error("Failed to restore CLI config on global proxy disable (\(self.track.rawValue, privacy: .public)): \(String(describing: error), privacy: .public)")
-            operationError = error.localizedDescription
-            return
+        if CLIConfigWriteGuard.isAllowed {
+            do {
+                try adapter.restoreCLIConfig()
+            } catch {
+                globalProxyManagerLog.error("Failed to restore CLI config on global proxy disable (\(self.track.rawValue, privacy: .public)): \(String(describing: error), privacy: .public)")
+                operationError = error.localizedDescription
+                return
+            }
         }
         var stoppedRuntime = false
         if track == .claude {
@@ -696,6 +703,10 @@ final class GlobalProxyManager: ObservableObject {
 
     /// 启动时恢复：持久化为启用且激活节点仍存在 → 重新拉起进程；否则优雅停用并清理 CLI 配置。
     func restoreOnLaunch() async {
+        // Enabling a track writes CLI configs after starting the local process.
+        // Skip the whole restore when writes are off, so we do not leave an
+        // orphan proxy running after activateCLIConfig fails.
+        guard CLIConfigWriteGuard.isAllowed else { return }
         let shouldRestore = track == .claude ? config.effectiveClaudeCodeEnabled : config.isEnabled
         guard shouldRestore else { return }
         let desktopRequiresRuntime = track == .desktop
