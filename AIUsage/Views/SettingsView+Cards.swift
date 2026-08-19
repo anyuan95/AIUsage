@@ -414,6 +414,17 @@ extension SettingsView {
             subtitle: L("Claude Code / Codex proxy behavior and logging.", "Claude Code / Codex 代理行为和日志管理。")
         ) {
             settingsToggleRow(
+                title: L("Allow modifying Claude / Codex / OpenCode config files", "允许修改 Claude / Codex / OpenCode 配置文件"),
+                subtitle: L(
+                    "Off by default. When off, AIUsage will not write ~/.claude/settings.json, ~/.codex/config.toml, OpenCode config, Claude Desktop profiles, or switch CLI auth files. Turn this on only if you want the proxy or account switcher to manage those files.",
+                    "默认关闭。关闭时不会改写 ~/.claude/settings.json、~/.codex/config.toml、OpenCode 配置、Claude Desktop 配置，也不会切换 CLI 登录文件。只有要用代理或账号切换器接管这些文件时才打开。"
+                ),
+                isOn: $settings.allowCLIConfigWrites
+            )
+
+            Divider()
+
+            settingsToggleRow(
                 title: L("Auto-restore proxies on launch", "启动时自动恢复代理"),
                 subtitle: L(
                     "If enabled, AIUsage restores the last activated Claude Code / Codex node and all proxy-only nodes when the app launches.",

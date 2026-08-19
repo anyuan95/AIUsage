@@ -43,6 +43,7 @@ enum CodexNoProxyFixer {
 
     /// 幂等写入受管理块（不存在则追加，存在则原地替换）。
     static func apply() throws {
+        try CLIConfigWriteGuard.requireAllowed()
         let path = envFilePath
         let existing = (try? String(contentsOfFile: path, encoding: .utf8)) ?? ""
         let stripped = stripManagedBlock(from: existing)
@@ -61,6 +62,7 @@ enum CodexNoProxyFixer {
 
     /// 移除受管理块；若文件因此变空则删除整文件（不影响用户自定义内容）。
     static func remove() throws {
+        try CLIConfigWriteGuard.requireAllowed()
         let path = envFilePath
         guard let existing = try? String(contentsOfFile: path, encoding: .utf8),
               existing.contains(blockBegin) else {

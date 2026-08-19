@@ -140,6 +140,7 @@ struct ClaudeHubView: View {
 /// Node creation, runtime state and upstream credentials live in the Node tab.
 private struct ClaudeCodeRoutingView: View {
     @Environment(\.colorScheme) private var colorScheme
+    @ObservedObject private var settings = AppSettings.shared
     @ObservedObject private var gateway = GlobalProxyManager.claude
     @ObservedObject private var proxyVM = ProxyViewModel.shared
     @State private var showSettingsEditor = false
@@ -270,6 +271,13 @@ private struct ClaudeCodeRoutingView: View {
                 .labelsHidden()
                 .pickerStyle(.segmented)
                 .frame(maxWidth: 440)
+                .disabled(!settings.allowCLIConfigWrites)
+            }
+
+            if !settings.allowCLIConfigWrites {
+                Text(CLIConfigWriteError.disabled.localizedDescription)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
             }
 
             if let effortError {
