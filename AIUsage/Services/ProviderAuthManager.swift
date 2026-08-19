@@ -119,6 +119,15 @@ enum ProviderAuthManager {
                 launchActions: [],
                 supportsEmbeddedWebLogin: false
             )
+        case "glm":
+            return ProviderAuthPlan(
+                titleEn: "Connect a GLM Coding Plan account",
+                titleZh: "连接 GLM Coding Plan 账号",
+                summaryEn: "Paste a Coding Plan API key from open.bigmodel.cn (China) or z.ai (International). AIUsage reads the quota monitor endpoint and tracks the 5-hour and weekly credit windows. Pay-as-you-go keys do not work here, and the two regions are not interchangeable.",
+                summaryZh: "粘贴国内 open.bigmodel.cn 或海外 z.ai 的 Coding Plan API Key。AIUsage 会读取额度监控接口，追踪 5 小时和周窗口。按量付费 Key 不可用，国内与海外 Key 不能混用。",
+                launchActions: [],
+                supportsEmbeddedWebLogin: false
+            )
         case "minimax":
             return ProviderAuthPlan(
                 titleEn: "Connect a MiniMax Token Plan account",

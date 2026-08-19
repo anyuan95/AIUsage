@@ -14,6 +14,7 @@ public enum ProviderRegistry {
         CursorProvider(),
         DroidProvider(),
         GeminiProvider(),
+        GLMProvider(),
         KimiProvider(),
         KiroProvider(),
         MiniMaxProvider(),
