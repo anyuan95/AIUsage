@@ -231,6 +231,7 @@ LAN mode binds the CPA data listener to all interfaces only after explicit opt-i
 ## Proxy Subsystem
 
 详细架构文档见 [PROXY_ARCHITECTURE.md](PROXY_ARCHITECTURE.md)。
+官方订阅余量监控（Provider / Registry / Normalizer / 刷新管线）见 [QUOTA_MONITORING.md](QUOTA_MONITORING.md)。
 Claude Code / Codex 的用量统计、计费、缓存和归档口径见 [USAGE_AND_BILLING.md](USAGE_AND_BILLING.md)。
 
 三条相互独立、可同时激活的代理面（各有独立的侧边栏入口与激活状态）：
